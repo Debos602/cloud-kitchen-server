@@ -35,7 +35,7 @@ async function run() {
 
 		app.get("/services/:id", async (req, res) => {
 			const id = req.params.id;
-			console.log(id);
+			// console.log(id);
 			const query = { _id: new ObjectId(id) };
 			const service = await serviceCollection.findOne(query);
 			res.send(service);
@@ -66,6 +66,25 @@ async function run() {
 		app.post("/addservice", async (req, res) => {
 			const newService = req.body;
 			const result = await serviceCollection.insertOne(newService);
+			res.send(result);
+		});
+
+		app.put("/myreview/:id", async (req, res) => {
+			const id = req.params.id;
+			const filter = { _id: new ObjectId(id) };
+			const editedReview = req.body;
+			const option = { upsert: true };
+			const updateReview = {
+				$set: {
+					message: editedReview.message,
+				},
+			};
+
+			const result = await reviewCollection.updateOne(
+				filter,
+				option,
+				updateReview
+			);
 			res.send(result);
 		});
 

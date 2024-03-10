@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
@@ -19,16 +20,41 @@ const client = new MongoClient(uri, {
 	},
 });
 
+function verifyJWT(req, res, next) {
+	console.log(req.headers.authorization);
+
+	const authHeader = req.headers.authorization;
+	if (!authHeader) {
+		res.status(401).send({ message: "unauthorized access" });
+	}
+	const token = authHeader.split(" ")[1];
+
+	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (error, decoded) {
+		if (error) {
+			res.status(403).send({ message: "unauthorized access" });
+		}
+		req.decoded = decoded;
+		next();
+	});
+}
+
 async function run() {
 	try {
 		const serviceCollection = client.db("CloudKitchen").collection("services");
 		const reviewCollection = client.db("CloudKitchen").collection("review");
 
+		app.post("/jwt", (req, res) => {
+			const user = req.body;
+			const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+				expiresIn: "1h",
+			});
+			res.send({ token });
+		});
+
 		// get all data
 		app.get("/services", async (req, res) => {
 			const page = req.query.page;
 			const size = parseInt(req.query.size);
-			console.log(page, size);
 			const query = {};
 			const cursor = serviceCollection.find(query);
 			const services = await cursor
@@ -48,8 +74,15 @@ async function run() {
 			res.send(service);
 		});
 
-		app.get("/reviews", async (req, res) => {
+		app.get("/reviews", verifyJWT, async (req, res) => {
 			// console.log(req.query.email);
+
+			const decoded = req.decoded;
+			console.log("inside kitchen api", decoded);
+			if (decoded.email !== req.query.email) {
+				res.status(403).send({ message: "Forbidden access" });
+			}
+
 			let query = {};
 			if (req.query.email) {
 				query = {

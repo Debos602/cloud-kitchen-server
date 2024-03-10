@@ -29,7 +29,8 @@ async function run() {
 			const query = {};
 			const cursor = serviceCollection.find(query);
 			const services = await cursor.toArray();
-			res.send(services);
+			const count = await serviceCollection.estimatedDocumentCount();
+			res.send({ count, services });
 		});
 		// get single data
 
@@ -73,18 +74,13 @@ async function run() {
 			const id = req.params.id;
 			const filter = { _id: new ObjectId(id) };
 			const editedReview = req.body;
-			const option = { upsert: true };
 			const updateReview = {
 				$set: {
 					message: editedReview.message,
 				},
 			};
 
-			const result = await reviewCollection.updateOne(
-				filter,
-				option,
-				updateReview
-			);
+			const result = await reviewCollection.updateOne(filter, updateReview);
 			res.send(result);
 		});
 

@@ -79,7 +79,7 @@ async function run() {
 
 			const decoded = req.decoded;
 			console.log("inside kitchen api", decoded);
-			if (decoded.email !== req.query.email) {
+			if (decoded?.email !== req.query.email) {
 				res.status(403).send({ message: "Forbidden access" });
 			}
 

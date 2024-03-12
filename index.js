@@ -25,13 +25,14 @@ function verifyJWT(req, res, next) {
 
 	const authHeader = req.headers.authorization;
 	if (!authHeader) {
-		res.status(401).send({ message: "unauthorized access" });
+		return res.status(401).send({ message: "unauthorized access" });
 	}
+
 	const token = authHeader.split(" ")[1];
 
 	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (error, decoded) {
 		if (error) {
-			res.status(403).send({ message: "unauthorized access" });
+			return res.status(403).send({ message: "unauthorized access" });
 		}
 		req.decoded = decoded;
 		next();
@@ -42,7 +43,7 @@ async function run() {
 	try {
 		const serviceCollection = client.db("CloudKitchen").collection("services");
 		const reviewCollection = client.db("CloudKitchen").collection("review");
-
+		const foodCollection = client.db("CloudKitchen").collection("foodList");
 		app.post("/jwt", (req, res) => {
 			const user = req.body;
 			const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -64,6 +65,13 @@ async function run() {
 			const count = await serviceCollection.estimatedDocumentCount();
 			res.send({ count, services });
 		});
+
+		app.get("/foodlist", async (req, res) => {
+			const query = {};
+			const cursor = foodCollection.find(query);
+			const allFood = await cursor.toArray();
+			res.send(allFood);
+		});
 		// get single data
 
 		app.get("/services/:id", async (req, res) => {
@@ -72,6 +80,13 @@ async function run() {
 			const query = { _id: new ObjectId(id) };
 			const service = await serviceCollection.findOne(query);
 			res.send(service);
+		});
+		app.get("/review/:id", async (req, res) => {
+			const id = req.params.id;
+			// console.log(id);
+			const query = { _id: new ObjectId(id) };
+			const review = await serviceCollection.findOne(query);
+			res.send(review);
 		});
 
 		app.get("/reviews", verifyJWT, async (req, res) => {

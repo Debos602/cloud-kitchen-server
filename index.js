@@ -6,11 +6,18 @@ const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
-//middlewar
-app.use(cors());
+// Middleware
+app.use(
+	cors({
+		origin: ["http://localhost:3000", "https://auth-kitchen.web.app"],
+		credentials: true,
+	})
+); // Enable CORS for all origins
+
 app.use(express.json());
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.gdk9eql.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// MongoDB URI
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.gdk9eql.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, {
 	serverApi: {
@@ -20,6 +27,7 @@ const client = new MongoClient(uri, {
 	},
 });
 
+// JWT verification middleware
 function verifyJWT(req, res, next) {
 	console.log(req.headers.authorization);
 
@@ -32,7 +40,7 @@ function verifyJWT(req, res, next) {
 
 	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (error, decoded) {
 		if (error) {
-			return res.status(403).send({ message: "unauthorized access" });
+			return res.status(401).send({ message: "unauthorized access" });
 		}
 		req.decoded = decoded;
 		next();
@@ -41,9 +49,12 @@ function verifyJWT(req, res, next) {
 
 async function run() {
 	try {
+		await client.connect();
 		const serviceCollection = client.db("CloudKitchen").collection("services");
 		const reviewCollection = client.db("CloudKitchen").collection("review");
 		const foodCollection = client.db("CloudKitchen").collection("foodList");
+
+		// Route definitions
 		app.post("/jwt", (req, res) => {
 			const user = req.body;
 			const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -52,7 +63,6 @@ async function run() {
 			res.send({ token });
 		});
 
-		// get all data
 		app.get("/services", async (req, res) => {
 			const page = req.query.page;
 			const size = parseInt(req.query.size);
@@ -72,29 +82,25 @@ async function run() {
 			const allFood = await cursor.toArray();
 			res.send(allFood);
 		});
-		// get single data
 
 		app.get("/services/:id", async (req, res) => {
 			const id = req.params.id;
-			// console.log(id);
 			const query = { _id: new ObjectId(id) };
 			const service = await serviceCollection.findOne(query);
 			res.send(service);
 		});
+
 		app.get("/review/:id", async (req, res) => {
 			const id = req.params.id;
-			// console.log(id);
 			const query = { _id: new ObjectId(id) };
 			const review = await serviceCollection.findOne(query);
 			res.send(review);
 		});
 
 		app.get("/reviews", verifyJWT, async (req, res) => {
-			// console.log(req.query.email);
-
 			const decoded = req.decoded;
-			console.log("inside kitchen api", decoded);
-			if (decoded?.email !== req.query.email) {
+			console.log("Inside kitchen api", decoded);
+			if (decoded.email !== req.query.email) {
 				res.status(403).send({ message: "Forbidden access" });
 			}
 
@@ -109,8 +115,6 @@ async function run() {
 			const reviews = await cursor.toArray();
 			res.send(reviews);
 		});
-
-		// review api
 
 		app.post("/review", async (req, res) => {
 			const review = req.body;
@@ -149,10 +153,12 @@ async function run() {
 }
 run().catch((error) => console.log(error));
 
+// Home route
 app.get("/", (req, res) => {
-	res.send("cloud kitchen server is running");
+	res.send("Cloud Kitchen server is running");
 });
 
+// Start server
 app.listen(port, () => {
-	console.log(`cloud kitchen server running on port ${port}`);
+	console.log(`Cloud Kitchen server running on port ${port}`);
 });
